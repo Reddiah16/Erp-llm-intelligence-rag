@@ -1,0 +1,23 @@
+# Data and ChromaDB
+/data/
+/chroma_db/
+/mlruns/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.venv*/
+dist/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

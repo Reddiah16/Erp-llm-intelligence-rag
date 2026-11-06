@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn==0.30.0
+pydantic==2.7.0
+langchain==0.2.0
+langchain-ollama==0.1.0
+langchain-core>=0.2.20
+langchain-chroma==0.1.2
+chromadb==0.5.0
+onnxruntime==1.16.3
+pandas==2.2.2
+numpy==1.26.4
+python-dotenv==1.0.1
+mlflow==2.13.0
