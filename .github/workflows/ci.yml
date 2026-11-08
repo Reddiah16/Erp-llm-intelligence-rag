@@ -22,7 +22,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: pip install -r requirements.dev.txt
+        run: pip install -r requirements.api.txt -r requirements.dashboard.txt -r requirements.dev.txt
 
       # tests/test_db_postgres.py is excluded everywhere the offline suite
       # runs: it needs a live PostgreSQL with the erp_analytics data and
