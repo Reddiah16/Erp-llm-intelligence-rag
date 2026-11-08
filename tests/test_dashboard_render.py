@@ -90,6 +90,11 @@ def test_overview_uses_the_exact_live_order_total(monkeypatch):
         return SimpleNamespace(status_code=200, json=lambda: payload)
 
     monkeypatch.setattr(requests, "request", fake_request)
+
+    def missing_local_snapshot(*args, **kwargs):
+        raise FileNotFoundError("local snapshot is absent")
+
+    monkeypatch.setattr("pandas.read_csv", missing_local_snapshot)
     app = launch()
     app.run()
     revenue = next(metric for metric in app.metric

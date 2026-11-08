@@ -15,7 +15,7 @@ number in an answer can only have come from SQL.
 """
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from src.ai.settings import AiSettings, default_settings
@@ -637,11 +637,14 @@ def safe_upload_name(filename: str) -> str:
     sanitising it into something quiet: "../../etc/passwd" and "payload.exe"
     both become an error the caller can read.
     """
-    tail = Path(filename or "").name
+    if not filename:
+        raise ValueError("the uploaded file has no name")
+    if "/" in filename or "\\" in filename or PureWindowsPath(filename).drive:
+        raise ValueError("the uploaded file name may not contain a path")
+
+    tail = Path(filename).name
     if not tail:
         raise ValueError("the uploaded file has no name")
-    if tail != filename:
-        raise ValueError("the uploaded file name may not contain a path")
     if tail.startswith("."):
         raise ValueError("the uploaded file name may not be hidden or relative")
     if Path(tail).suffix.lower() not in TEXT_SUFFIXES:

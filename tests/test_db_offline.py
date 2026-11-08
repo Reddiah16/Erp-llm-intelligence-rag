@@ -214,13 +214,12 @@ def test_transform_casts_instead_of_relying_on_implicit_conversion():
 
 
 @pytest.mark.parametrize("name", ["staging", "schema", "views", "transform",
-                                   "provision", "provision_interactive"])
+                                   "provision_interactive"])
 def test_sql_files_contain_no_transaction_control(name):
     """migrate.py owns the transaction, so a commit here would defeat the gates.
 
-    provision.sql belongs in the list even though psql runs it: the CREATE
-    DATABASE in it cannot run inside a transaction block at all, so a BEGIN
-    there would not merely skip the gates, it would fail the script.
+    The interactive provisioning script is also executed outside the migration
+    transaction because it creates the database.
     """
     text = sql_code(name).upper()
     for statement in ("BEGIN", "COMMIT", "ROLLBACK"):
@@ -398,44 +397,15 @@ def test_env_example_lists_names_and_no_secret():
     assert ".env" in (ROOT_DIR / ".gitignore").read_text(encoding="utf-8")
 
 
-def test_provision_sql_carries_no_password_and_asks_for_no_privilege():
-    """The one SQL file a superuser runs must not itself want privileges.
-
-    A literal password here would be committed, and a SUPERUSER or
-    pg_read_server_files grant would be a standing invitation to read any file
-    on the server - the migration needs neither, because COPY FROM STDIN
-    streams the data over the connection.
-    """
-    text = sql_text("provision")
-    code = sql_code("provision")
-    assert r"\getenv erp_password ERP_DB_PASSWORD" in text
-    assert not re.search(r"PASSWORD\s+'", code), "a literal password in a committed file"
-    assert r"PASSWORD %L" in code                      # quoted by format(), never concatenated
-    assert r"\if :pw_blank" in text
-    # Ownership of the database is the whole grant; anything else is a privilege
-    # the migration does not need and should not be discovered to rely on. The
-    # role statements are read line by line, because the report at the foot of
-    # the file selects rolcreaterole and a statement-spanning match would read
-    # that column name as a demand for the attribute.
-    assert "GRANT" not in code.upper()
-    role_lines = [line.strip() for line in code.splitlines()
-                  if re.search(r"(CREATE|ALTER) ROLE", line, re.I)]
-    assert len(role_lines) == 2, role_lines
-    for line in role_lines:
-        for too_much in ("SUPERUSER", "CREATEDB", "CREATEROLE", "BYPASSRLS"):
-            assert too_much not in line.upper(), (line, too_much)
-
-
-@pytest.mark.parametrize("name", ["provision", "provision_interactive"])
-def test_provisioning_is_idempotent_and_names_the_settings_the_app_expects(name):
-    r"""Re-running either script on a provisioned server must change nothing.
+def test_interactive_provisioning_is_idempotent_and_matches_app_settings():
+    r"""Re-running setup on a provisioned server must change nothing.
 
     Each of the four statements is a conditional \gexec, and the role and
     database they build are the same ones config.py and .env.example advertise -
     a mismatch there would turn setup into a confusing privilege error.
     """
     from src.db import config
-    text = sql_code(name)                       # comments out: the header explains \gexec
+    text = sql_code("provision_interactive")
     assert text.count("\\gexec") == 4
     assert "WHERE NOT EXISTS (SELECT 1 FROM pg_roles" in text
     assert "WHERE NOT EXISTS (SELECT 1 FROM pg_database" in text
@@ -447,52 +417,34 @@ def test_provisioning_is_idempotent_and_names_the_settings_the_app_expects(name)
     assert "POSTGRES_USER=erp" in env and "POSTGRES_DB=erp_analytics" in env
 
 
-@pytest.mark.parametrize("name", ["provision", "provision_interactive"])
-def test_no_provisioning_script_holds_a_secret_or_asks_for_a_privilege(name):
-    r"""Either way in, the least privilege is the same: own one database.
+def test_interactive_provisioning_uses_no_secret_or_unneeded_privileges():
+    r"""Provisioning uses psql's password prompt and grants only database ownership.
 
-    A literal password in a committed file is a secret in the repository, and
-    SUPERUSER or pg_read_server_files would be a standing invitation to read
-    any file on the server. The migration needs neither, because COPY FROM
-    STDIN streams the data over the connection.
-
-    How the two scripts supply the password differs on purpose - provision.sql
-    names it in a CREATE ROLE statement through format()'s %L, this check only
-    forbids a quoted literal - so the \password-only rule is asserted in
-    test_provision_interactive_leaves_the_password_to_psql.
+    SUPERUSER or pg_read_server_files would allow access the migration does
+    not need, because COPY FROM STDIN streams data over the connection.
     """
-    code = sql_code(name)
+    code = sql_code("provision_interactive")
     assert not re.search(r"PASSWORD\s+'", code), "a literal password in a committed file"
     assert "GRANT" not in code.upper()
     assert "pg_read_server_files" not in code
-    # The role statements are read line by line, because the report at the foot
-    # of each file selects rolcreaterole and a statement-spanning match would
-    # read that column name as a demand for the attribute.
+    # Read role statements individually: the final report selects rolcreaterole.
     role_lines = [line.strip() for line in code.splitlines()
                   if re.search(r"(CREATE|ALTER) ROLE", line, re.I)]
-    assert role_lines, name
+    assert role_lines
     for line in role_lines:
         for too_much in ("SUPERUSER", "CREATEDB", "CREATEROLE", "BYPASSRLS"):
-            assert too_much not in line.upper(), (name, line, too_much)
+            assert too_much not in line.upper(), line
 
 
 def test_provision_interactive_leaves_the_password_to_psql():
-    r"""The point of the interactive variant: no value the client can echo.
-
-    provision.sql needs ERP_DB_PASSWORD because it puts the secret in a CREATE
-    ROLE statement. Here the role is created with no verifier at all and
-    \password supplies one, so neither the environment nor the query text nor
-    the shell history ever holds the secret.
-    """
+    r"""The password is entered through psql instead of stored in SQL or env."""
     text = sql_text("provision_interactive")
     code = sql_code("provision_interactive")
     # Comments may name ERP_DB_PASSWORD to explain what this file avoids; the
     # statements must not use it.
     assert "\\getenv" not in code and "ERP_DB_PASSWORD" not in code
     assert code.count("\\password erp") == 1
-    # The reason the file exists has to be readable by someone who finds two
-    # provisioning scripts and has to pick one.
-    assert "provision.sql" in text and "\\password" in text
+    assert "\\password" in text
     # No DDL statement carries a password clause - only \password does.
     for line in code.splitlines():
         if re.search(r"^\s*(SELECT ')?(CREATE|ALTER) (ROLE|DATABASE)", line, re.I):
@@ -530,8 +482,7 @@ def test_provision_interactive_never_prints_the_password_verifier():
     assert "md5" in code, "a weak verifier should be named, not printed"
 
 
-@pytest.mark.parametrize("name", ["provision", "provision_interactive"])
-def test_provisioning_refusals_fail_loudly_instead_of_quitting_quietly(name):
+def test_interactive_provisioning_refusals_fail_loudly_instead_of_quitting_quietly():
     r"""A setup that refuses must not look like a setup that worked.
 
     Measured on psql 18: \quit cannot carry an exit code, so it always leaves
@@ -540,11 +491,11 @@ def test_provisioning_refusals_fail_loudly_instead_of_quitting_quietly(name):
     and ON_ERROR_STOP is set inside the file rather than left to whichever
     command line invoked it, so the raise actually stops the run.
     """
-    code = sql_code(name)
+    code = sql_code("provision_interactive")
     assert r"\set ON_ERROR_STOP on" in code
     assert "\\quit" not in code
     assert code.count("RAISE EXCEPTION") == code.count("provisioning refused")
-    assert code.count("RAISE EXCEPTION") >= 1, name
+    assert code.count("RAISE EXCEPTION") >= 1
     # A refusal must sit in the branch that detects the problem, not after
     # \endif, where it would fire on every run.
     for block in re.findall(r"\\else(.*?)\\endif", code, re.S):

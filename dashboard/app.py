@@ -199,6 +199,15 @@ def render_local_snapshot() -> None:
 
     Kept exactly as it was: order-grain totals, order-grain pending counts
     and stock KPIs over recorded inventory only."""
+    analytics_ok, analytics = call_api(
+        "GET", "/analytics",
+        params={"question": "total_sales_revenue", "limit": 1})
+    live_revenue = None
+    if analytics_ok:
+        results = analytics.get("queries", [])
+        if results and results[0].get("rows"):
+            live_revenue = results[0]["rows"][0].get("order_total_due")
+
     sales = stock = po = None
     try:
         sales = pd.read_csv(SALES_FILE)
@@ -216,14 +225,6 @@ def render_local_snapshot() -> None:
         # are computed over the recorded subset and never over all products.
         recorded_stock   = stock[stock["HasInventoryRecord"]]
         unrecorded_stock = stock[~stock["HasInventoryRecord"]]
-        analytics_ok, analytics = call_api(
-            "GET", "/analytics",
-            params={"question": "total_sales_revenue", "limit": 1})
-        live_revenue = None
-        if analytics_ok:
-            results = analytics.get("queries", [])
-            if results and results[0].get("rows"):
-                live_revenue = results[0]["rows"][0].get("order_total_due")
         local_revenue = sum(
             (Decimal(str(value)) for value in orders["TotalDue"]),
             Decimal("0"))
@@ -257,6 +258,9 @@ def render_local_snapshot() -> None:
                 "from the below-safety and reordering counts rather than "
                 "treated as zero stock.")
     except Exception:
+        if live_revenue is not None:
+            st.metric("Revenue — order-level TotalDue (USD)",
+                      money(live_revenue), "live PostgreSQL")
         st.caption(
             "Could not load cleaned AdventureWorks data — run "
             "'python -m src.data.loader' first. The API-based analytics page "

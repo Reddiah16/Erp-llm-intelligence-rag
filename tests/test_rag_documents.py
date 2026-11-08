@@ -193,11 +193,22 @@ def test_corpus_paths_find_every_text_document_and_nothing_else(tmp_path, settin
 def test_safe_names_pass_through():
     assert documents.safe_upload_name("policy.md") == "policy.md"
     assert documents.safe_upload_name("rules.txt") == "rules.txt"
+    assert documents.safe_upload_name("policy..draft.md") == "policy..draft.md"
 
 
 def test_path_traversal_is_rejected_not_repaired():
-    for hostile in ("../secret.md", "sub/../../root.md", r"..\\..\\x.md",
-                    "a/b.md", "C:\\policy.md"):
+    for hostile in (
+        "../secret.md",
+        "nested/../secret.md",
+        "sub/../../root.md",
+        r"..\..\secret.md",
+        r"nested\..\secret.md",
+        "a/b.md",
+        "C:\\policy.md",
+        r"C:secret.md",
+        r"\\server\share\secret.md",
+        "/etc/secret.md",
+    ):
         with pytest.raises(ValueError):
             documents.safe_upload_name(hostile)
 
