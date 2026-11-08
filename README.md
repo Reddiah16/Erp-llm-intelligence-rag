@@ -103,7 +103,7 @@ These are observed QA dataset results, not a claim about a live production busin
 Clone the repository, create the virtual environment, install the API, dashboard, and development dependencies, and create a local environment file:
 
 ```powershell
-git clone https://github.com/kbajish/erp-llm-intelligence-rag.git
+git clone https://github.com/Reddiah16/Erp-llm-intelligence-rag.git
 Set-Location erp-llm-intelligence-rag
 
 python -m venv .venv
@@ -218,7 +218,7 @@ Run the safe test suite:
 .\.venv\Scripts\python.exe -m pytest tests -q --ignore=tests\test_db_postgres.py
 ```
 
-**Local safe-suite result (2026-11-08): 482 passed, 0 failed, 0 skipped; 19 dependency warnings.** `tests\test_db_postgres.py` was excluded because it performs PostgreSQL integration tests. The test suite uses fakes and temporary stores where applicable; this result does not imply a production deployment. Docker images and Compose have not been built or run in this environment.
+**Local safe-suite result (2026-11-08): 477 passed, 0 failed, 0 skipped.** `tests\test_db_postgres.py` was excluded because it performs PostgreSQL integration tests. The test suite uses fakes and temporary stores where applicable; this result does not imply a production deployment. GitHub Actions successfully built both API and dashboard Docker images. Local Docker Compose runtime testing has not been verified.
 
 ## Screenshots
 
@@ -246,7 +246,7 @@ evaluation_data/      Local evaluation event storage
 - **No project license is included.** No express license to reuse or redistribute this project is granted by this repository at this time.
 - **Conversation history is in memory.** Restarting FastAPI clears its current transcripts. Evaluation event storage is separate.
 - **Evaluation provenance is incomplete.** Records cannot reliably distinguish internal QA, manual testing, and external participants. The dashboard aggregates all records and the metrics are not evidence of an external pilot.
-- **Docker has not been verified.** Compose files exist, but the Docker stack was not built or run in the documented QA environment.
+- **Docker runtime remains unverified locally.** GitHub Actions successfully built the API and dashboard images, but the Compose stack has not been started and tested locally.
 - **The API has no authentication or authorization.** Run it only on a trusted local machine/network; the Compose configuration publishes service ports and is not a secure public deployment.
 - **Model-generated prose can be imperfect.** A verified QA run found a repetitive procurement-policy response. Figure checks and citations do not guarantee every textual statement is correct.
 - **Overview counts are partly snapshots.** Order count, inventory counts, and pending-PO count are local CSV-derived values and may lag PostgreSQL; revenue is fetched live when the API is available.

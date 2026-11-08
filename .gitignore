@@ -39,3 +39,14 @@ Thumbs.db
 .ipynb_checkpoints/
 # Pilot evaluation data (persists across API restarts, never an ERP table)
 evaluation_data/
+
+# Private task reports and inventories; keep screenshots and other assets eligible
+/docs/**/*.md
+
+# Unapproved policy documents and unsafe local test/setup scripts
+/documents/business_rules.md
+/documents/data_dictionary.md
+/documents/inventory_policy.md
+/documents/procurement_guidelines.md
+/db/provision.sql
+/tests/test_db_postgres.py
