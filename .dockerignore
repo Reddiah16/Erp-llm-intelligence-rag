@@ -48,8 +48,8 @@ tests/
 /dvc.yaml
 /requirements.dev.txt
 
-# User-uploaded corpus content is not part of the curated image corpus
-/documents/uploads/
+# Local corpus content is mounted at runtime and must not enter the build context
+/documents/
 
 # Logs, temporary files, local databases/dumps, and private key material
 *.log
