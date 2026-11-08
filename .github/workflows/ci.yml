@@ -1,10 +1,14 @@
 name: CI
 
+# The repository was developed on the "master" branch while the workflow only
+# triggered on "main", so pushes to the local branch ran no CI. Both names are
+# listed until the branch is unified; remove "master" once the default branch
+# is "main".
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   test:
@@ -20,8 +24,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.dev.txt
 
+      # tests/test_db_postgres.py is excluded everywhere the offline suite
+      # runs: it needs a live PostgreSQL with the erp_analytics data and
+      # deliberately exercises destructive paths.
       - name: Run tests
-        run: pytest tests/ -v
+        run: pytest tests/ -q -p no:warnings --ignore=tests/test_db_postgres.py
 
   docker-build:
     runs-on: ubuntu-latest

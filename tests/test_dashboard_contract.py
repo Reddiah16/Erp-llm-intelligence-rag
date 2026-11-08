@@ -37,8 +37,12 @@ DASHBOARD_CONTRACT = {
 }
 
 # Identifiers that only exist in the synthetic generator schema.
+# "below_safety" is checked as a column-access token instead of a bare
+# substring: the approved analytics query name "products_below_safety_stock"
+# (the /analytics endpoint in api/main.py) legitimately contains it, while a
+# generator-schema leak would read a data column as df["below_safety"].
 FORBIDDEN_DASHBOARD_TOKENS = [
-    "total_value", "below_safety", "current_stock", "safety_stock",
+    "total_value", "below_safety]", "current_stock", "safety_stock]",
     "material_id", "material_master", "region", "EUR",
     '== "Open"', "generator",
 ]

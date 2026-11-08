@@ -1,19 +1,35 @@
-# Data and ChromaDB
-/data/
-/chroma_db/
-/mlruns/
-
-# Secrets
+# Secrets - never commit a real credential. .env.example stays tracked because
+# it holds safe placeholder values only.
 .env
+.env.local
+.env.production
+.env.*
+!.env.example
+
+# Local editor/assistant workspace
+.qoder/
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
 *.egg-info/
 .venv/
 .venv*/
 dist/
+build/
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Local data and learned state
+/data/
+/chroma_db/
+/documents/uploads/
+/mlruns/
+/mlartifacts/
+/logs/
+*.log
 
 # OS
 .DS_Store
@@ -21,3 +37,5 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+# Pilot evaluation data (persists across API restarts, never an ERP table)
+evaluation_data/

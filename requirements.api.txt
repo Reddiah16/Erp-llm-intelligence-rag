@@ -10,4 +10,5 @@ onnxruntime==1.16.3
 pandas==2.2.2
 numpy==1.26.4
 python-dotenv==1.0.1
+psycopg[binary]==3.2.9
 mlflow==2.13.0

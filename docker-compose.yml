@@ -1,6 +1,39 @@
-version: "3.9"
+# The stack: PostgreSQL + FastAPI + Streamlit + MLflow, with Ollama reached on
+# the HOST (it is not containerised - models would be re-downloaded into the
+# container and the GPU passthrough is host-specific).
+#
+#     docker compose up --build
+#
+# Notes that matter:
+# * Ollama is at http://host.docker.internal:11434 - never "localhost" inside
+#   a container, which would be the container itself. The extra_hosts entry
+#   makes that name resolve on plain Linux engines too, not just Docker
+#   Desktop.
+# * Passwords and ports are interpolated from the gitignored .env at run
+#   time; this file never carries a credential. POSTGRES_PASSWORD is
+#   mandatory (the containerised PostgreSQL refuses to start without a
+#   password, and the API refuses to start without credentials).
+# * NOT VERIFIED on the development machine: Docker is not installed there,
+#   so this file was reviewed for consistency, not executed. A containerised
+#   PostgreSQL also starts EMPTY - db/provision.sql and `python -m
+#   src.db.migrate` must be run against it before the analytics queries
+#   answer. See README "Docker status" for the exact limitation.
 
 services:
+
+  postgres:
+    image: postgres:18
+    container_name: erp_postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-erp_analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-erp}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - copy .env.example to .env and fill it in}
+      - POSTGRES_PORT=5432
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: on-failure
 
   api:
     build:
@@ -12,15 +45,29 @@ services:
     volumes:
       - ./src:/app/src
       - ./api:/app/api
+      - ./documents:/app/documents
       - ./chroma_db:/app/chroma_db
-      - ./data:/app/data
     environment:
+      # The database this process talks to is the containerised one.
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-erp_analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-erp}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - copy .env.example to .env and fill it in}
+      # Ollama runs on the host machine.
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_MODEL=llama3.2
-      - OLLAMA_EMBED_MODEL=nomic-embed-text
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
+      - OLLAMA_ROUTE_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - RAG_EMBEDDING_PROVIDER=${RAG_EMBEDDING_PROVIDER:-chroma}
+      - DOCUMENTS_DIR=/app/documents
       - CHROMA_PATH=/app/chroma_db
+      - DOCUMENT_COLLECTION=${DOCUMENT_COLLECTION:-erp_documents}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
+      - postgres
       - mlflow
     restart: on-failure
 
@@ -34,7 +81,9 @@ services:
     volumes:
       - ./dashboard:/app/dashboard
     environment:
-      - API_URL=http://api:8000
+      # The dashboard code reads ERP_API_URL (not API_URL), and must reach the
+      # API service by its compose network name.
+      - ERP_API_URL=http://api:8000
     depends_on:
       - api
     restart: on-failure
@@ -52,3 +101,6 @@ services:
       --port 5000
       --backend-store-uri /mlruns
     restart: on-failure
+
+volumes:
+  pg_data:

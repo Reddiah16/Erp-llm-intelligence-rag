@@ -11,6 +11,7 @@ import pytest
 
 from src.data import loader
 from src.chunking import chunker
+from src.evaluation import pilot as pilot_module
 
 DATE_COLUMNS = {c for cols in loader.HEADERS.values() for c in cols if "Date" in c}
 
@@ -80,6 +81,23 @@ def point_modules_at(data_dir: Path, monkeypatch) -> None:
     monkeypatch.setattr(loader, "MM_DIR", mm)
     monkeypatch.setattr(chunker, "SD_DIR", sd)
     monkeypatch.setattr(chunker, "MM_DIR", mm)
+
+
+@pytest.fixture(autouse=True)
+def isolated_pilot_store(tmp_path_factory, monkeypatch):
+    """Every test gets a throwaway pilot-evaluation directory.
+
+    The /chat instrumentation records evaluation turns on disk by design
+    (persistence across API restarts), so the offline suite must point the
+    store at a temporary directory: no run ever adds junk to the working
+    tree's evaluation_data/ or to a real pilot's records, and every test
+    starts from an empty store.
+    """
+    directory = tmp_path_factory.mktemp("pilot") / "evaluation"
+    monkeypatch.setenv("EVALUATION_DATA_DIR", str(directory))
+    pilot_module.reset_store()
+    yield
+    pilot_module.reset_store()
 
 
 @pytest.fixture

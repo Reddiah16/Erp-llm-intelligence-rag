@@ -2,5 +2,9 @@ FROM python:3.10-slim
 WORKDIR /app
 COPY requirements.dashboard.txt .
 RUN pip install --no-cache-dir -r requirements.dashboard.txt
+COPY .streamlit/ .streamlit/
 COPY dashboard/ ./dashboard/
+COPY src/__init__.py ./src/__init__.py
+COPY src/evaluation/__init__.py ./src/evaluation/__init__.py
+COPY src/evaluation/dashboard_views.py ./src/evaluation/dashboard_views.py
 CMD ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

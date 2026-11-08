@@ -1,0 +1,68 @@
+# Environment and secrets
+.env
+.env.*
+
+# Git, IDE, and assistant state
+.git/
+.qoder/
+.vscode/
+.idea/
+
+# Python environments, bytecode, caches, tests, and build output
+.venv/
+.venv*/
+**/.venv/
+**/.venv*/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+tests/
+
+# Local data and generated state
+/data/
+/chroma_db/
+/evaluation_data/
+/mlruns/
+/mlartifacts/
+/logs/
+/tmp/
+/temp/
+.cache/
+/models/
+/model_cache/
+
+# Unneeded repository content for the current image builds
+/docs/
+/db/
+/.github/
+/.gitignore
+/.gitattributes
+/README*
+/AI_ACT_COMPLIANCE.md
+/dvc.yaml
+/requirements.dev.txt
+
+# User-uploaded corpus content is not part of the curated image corpus
+/documents/uploads/
+
+# Logs, temporary files, local databases/dumps, and private key material
+*.log
+*.tmp
+*.temp
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.pem
+*.key
+*.p12
+*.pfx
